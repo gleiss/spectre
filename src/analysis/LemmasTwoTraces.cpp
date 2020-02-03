@@ -15,8 +15,8 @@ namespace analysis {
         auto t1 = trace1Term();
         auto t2 = trace2Term();
 
-        auto posSymbol = logic::Signature::varSymbol("pos", logic::Sorts::intSort());
-        auto pos = logic::Terms::var(posSymbol);
+        auto posSymbol = posVarSymbol();
+        auto pos = posVar();
         
         // add lemma for each intVar and each intArrayVar
         for (const auto& v : locationToActiveVars.at(locationSymbolForStatement(statement)->name))
@@ -64,15 +64,14 @@ namespace analysis {
 
         auto itSymbol = iteratorSymbol(statement);
         auto it = iteratorTermForLoop(statement);
-        auto nT1 = lastIterationTermForLoop(statement, t1, true);
-        auto nT2 = lastIterationTermForLoop(statement, t2, true);
+        auto nT1 = lastIterationTermForLoop(statement, true, t1);
+        auto nT2 = lastIterationTermForLoop(statement, true, t2);
         
         auto lStartIt = timepointForLoopStatement(statement, it);
         auto lStartNT1 = timepointForLoopStatement(statement, nT1);
         auto lStartNT2 = timepointForLoopStatement(statement, nT2);
 
         std::unordered_set<std::shared_ptr<const program::Variable>> loopConditionVars;
-        std::cout << statement->condition->toString() << std::endl;
         computeVariablesContainedInLoopCondition(statement->condition, loopConditionVars);
 
         auto nameSuffix = "-" + statement->location;
@@ -96,8 +95,8 @@ namespace analysis {
                 {
                     if (v->isArray)
                     {
-                        auto posSymbol = logic::Signature::varSymbol("pos", logic::Sorts::intSort());
-                        auto pos = logic::Terms::var(posSymbol);
+                        auto posSymbol = posVarSymbol();
+                        auto pos = posVar();
                         conjuncts.push_back(
                             logic::Formulas::universal(
                                 {posSymbol},
@@ -141,8 +140,8 @@ namespace analysis {
             {
                 if (v->isArray)
                 {
-                    auto posSymbol = logic::Signature::varSymbol("pos", logic::Sorts::intSort());
-                    auto pos = logic::Terms::var(posSymbol);
+                    auto posSymbol = posVarSymbol();
+                    auto pos = posVar();
                     premiseConjuncts.push_back(
                         logic::Formulas::universal(
                             {posSymbol},

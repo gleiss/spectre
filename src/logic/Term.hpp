@@ -21,10 +21,20 @@ namespace logic {
 
         std::shared_ptr<const Symbol> symbol;
         
+        enum class Type
+        {
+            Variable,
+            FuncTerm,
+        };
+        virtual Type type() const = 0;
+
         virtual std::string toSMTLIB() const = 0;
         virtual std::string prettyString() const = 0;
     };
-    
+
+    bool operator==(const Term& t1, const Term& t2);
+    bool operator!=(const Term& t1, const Term& t2);
+        
     class LVariable : public Term
     {
         friend class Terms;
@@ -34,14 +44,12 @@ namespace logic {
     public:
         const unsigned id;
 
+        Type type() const override { return Term::Type::Variable; }
         std::string toSMTLIB() const override;
         virtual std::string prettyString() const override;
         
         static unsigned freshId;
     };
-    
-    bool compareLVarPointers(const LVariable* p1, const LVariable* p2);
-    bool eqLVarPointers(const LVariable* p1, const LVariable* p2);
     
     class FuncTerm : public Term
     {
@@ -58,6 +66,7 @@ namespace logic {
     public:
         const std::vector<std::shared_ptr<const Term>> subterms;
         
+        Type type() const override { return Term::Type::FuncTerm; }
         std::string toSMTLIB() const override;
         virtual std::string prettyString() const override;
     };

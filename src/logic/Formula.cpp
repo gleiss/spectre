@@ -157,6 +157,18 @@ namespace logic {
         return  str;
     }
 
+    std::string TrueFormula::toSMTLIB(unsigned indentation) const
+    {
+        std::string str = stringForLabel(indentation);
+        return str + std::string(indentation, ' ') + "true";
+    }
+
+    std::string FalseFormula::toSMTLIB(unsigned indentation) const
+    {
+        std::string str = stringForLabel(indentation);
+        return str + std::string(indentation, ' ') + "false";
+    }
+
     std::string PredicateFormula::prettyString(unsigned indentation) const
     {
         auto str = std::string(indentation, ' ');
@@ -245,6 +257,7 @@ namespace logic {
         
         return str;
     }
+
     std::string ImplicationFormula::prettyString(unsigned indentation) const
     {
         std::string str = std::string(indentation, ' ') + "=>\n";
@@ -252,12 +265,23 @@ namespace logic {
         str += f2->prettyString(indentation + 3);
         return  str;
     }
+
     std::string EquivalenceFormula::prettyString(unsigned indentation) const
     {
         std::string str = std::string(indentation, ' ') + "=\n";
         str += f1->prettyString(indentation + 3) + "\n";
         str += f2->prettyString(indentation + 3);
         return  str;
+    }
+
+    std::string TrueFormula::prettyString(unsigned indentation) const
+    {
+        return std::string(indentation, ' ') + "True";
+    }
+
+    std::string FalseFormula::prettyString(unsigned indentation) const
+    {
+        return std::string(indentation, ' ') + "False";
     }
     
 # pragma mark - Formulas
@@ -310,7 +334,7 @@ namespace logic {
     {
         if (vars.empty())
         {
-            return f; // TODO: return copy of f which has label
+            return copyWithLabel(f, label);
         }
         else
         {
@@ -321,11 +345,231 @@ namespace logic {
     {
         if (vars.empty())
         {
-            return f; // TODO: return copy of f which has label
+            return copyWithLabel(f, label);
         }
         else
         {
             return std::make_shared<const UniversalFormula>(std::move(vars), f, label);
+        }
+    }
+
+    std::shared_ptr<const Formula> Formulas::trueFormula(std::string label)
+    {
+        return std::make_shared<const TrueFormula>(label);
+    }
+    std::shared_ptr<const Formula> Formulas::falseFormula(std::string label)
+    {
+        return std::make_shared<const FalseFormula>(label);
+    }
+
+    std::shared_ptr<const Formula> Formulas::equalitySimp(std::shared_ptr<const Term> left, std::shared_ptr<const Term> right, std::string label)
+    {
+        if (*left == *right)
+        {
+            return trueFormula(label);
+        }
+        return equality(left, right, label);
+    }
+    
+    std::shared_ptr<const Formula> Formulas::disequalitySimp(std::shared_ptr<const Term> left, std::shared_ptr<const Term> right, std::string label)
+    {
+        if (*left == *right)
+        {
+            return falseFormula(label);
+        }
+        return disequality(left, right, label);
+    }
+    
+    std::shared_ptr<const Formula>  Formulas::negationSimp(std::shared_ptr<const Formula> f, std::string label)
+    {
+        if (f->type() == Formula::Type::True)
+        {
+            return falseFormula(label);
+        }
+        else if (f->type() == Formula::Type::False)
+        {
+            return trueFormula(label);
+        }
+        
+        return negation(f, label);
+    }
+    
+    std::shared_ptr<const Formula> Formulas::conjunctionSimp(std::vector<std::shared_ptr<const Formula>> conj, std::string label)
+    {
+        for (const auto& conjunct : conj)
+        {
+            if (conjunct->type() == Formula::Type::False)
+            {
+                return falseFormula(label);
+            }
+        }
+
+        auto isTrueFormula = [](std::shared_ptr<const logic::Formula> f) -> bool
+        {
+            return f->type() == Formula::Type::True;
+        };
+        conj.erase(std::remove_if(conj.begin(), conj.end(), isTrueFormula), conj.end());
+
+        if (conj.empty())
+        {
+            return trueFormula(label);
+        }
+        else if (conj.size() == 1)
+        {
+            return (label == "") ? conj.front() : copyWithLabel(conj.front(), label);
+        }
+        
+        return conjunction(conj, label);
+    }
+    std::shared_ptr<const Formula> Formulas::disjunctionSimp(std::vector<std::shared_ptr<const Formula>> disj, std::string label)
+    {
+        for (const auto& disjunct : disj)
+        {
+            if (disjunct->type() == Formula::Type::True)
+            {
+                return trueFormula(label);
+            }
+        }
+
+        auto isFalseFormula = [](std::shared_ptr<const logic::Formula> f) -> bool
+        {
+            return f->type() == Formula::Type::False;
+        };
+        disj.erase(std::remove_if(disj.begin(), disj.end(), isFalseFormula), disj.end());
+
+        if (disj.empty())
+        {
+            return falseFormula(label);
+        }
+        else if (disj.size() == 1)
+        {
+            return (label == "") ? disj.front() : copyWithLabel(disj.front(), label);
+        }
+        
+        return disjunction(disj, label);
+    }
+    
+    std::shared_ptr<const Formula> Formulas::implicationSimp(std::shared_ptr<const Formula> f1, std::shared_ptr<const Formula> f2, std::string label)
+    {
+        if (f1->type() == Formula::Type::False || f2->type() == Formula::Type::True)
+        {
+            return trueFormula(label);
+        }
+        else if (f1->type() == Formula::Type::True)
+        {
+            return (label == "") ? f2 : copyWithLabel(f2, label);
+        }
+        else if (f2->type() == Formula::Type::False)
+        {
+            return negation(f1, label);
+        }
+        
+        return implication(f1, f2, label);
+    }
+
+    std::shared_ptr<const Formula> Formulas::equivalenceSimp(std::shared_ptr<const Formula> f1, std::shared_ptr<const Formula> f2, std::string label)
+    {
+        if (f1->type() == Formula::Type::True)
+        {
+            return (label == "") ? f2 : copyWithLabel(f2, label);
+        }
+        else if (f1->type() == Formula::Type::False)
+        {
+            return negation(f2, label);
+        }
+        else if (f2->type() == Formula::Type::True)
+        {
+            return (label == "") ? f1 : copyWithLabel(f1, label);
+        }
+        else if (f2->type() == Formula::Type::False)
+        {
+            return negation(f1, label);
+        }
+
+        return equivalence(f1, f2, label);
+    }
+    
+    std::shared_ptr<const Formula> Formulas::existentialSimp(std::vector<std::shared_ptr<const Symbol>> vars, std::shared_ptr<const Formula> f, std::string label)
+    {
+        if (f->type() == Formula::Type::True || f->type() == Formula::Type::False)
+        {
+            return copyWithLabel(f, label);
+        }
+
+        return existential(vars, f, label);
+    }
+    std::shared_ptr<const Formula> Formulas::universalSimp(std::vector<std::shared_ptr<const Symbol>> vars, std::shared_ptr<const Formula> f, std::string label)
+    {
+        if (f->type() == Formula::Type::True || f->type() == Formula::Type::False)
+        {
+            return copyWithLabel(f, label);
+        }
+
+        return universal(vars, f, label);
+    }
+
+    std::shared_ptr<const Formula> Formulas::copyWithLabel(std::shared_ptr<const Formula> f, std::string label)
+    {
+        switch (f->type())
+        {
+            case logic::Formula::Type::Predicate:
+            {
+                auto castedFormula = std::static_pointer_cast<const logic::PredicateFormula>(f);
+                return std::make_shared<const PredicateFormula>(castedFormula->symbol, castedFormula->subterms, label);
+            }
+            case logic::Formula::Type::Equality:
+            {
+                auto castedFormula = std::static_pointer_cast<const logic::EqualityFormula>(f);
+                return equality(castedFormula->left, castedFormula->right, label);
+            }
+            case logic::Formula::Type::Conjunction:
+            {
+                auto castedFormula = std::static_pointer_cast<const logic::ConjunctionFormula>(f);
+                return conjunction(castedFormula->conj, label);
+            }
+            case logic::Formula::Type::Disjunction:
+            {
+                auto castedFormula = std::static_pointer_cast<const logic::DisjunctionFormula>(f);
+                return disjunction(castedFormula->disj, label);
+            }
+            case logic::Formula::Type::Negation:
+            {
+                auto castedFormula = std::static_pointer_cast<const logic::NegationFormula>(f);
+                return negation(castedFormula->f, label);
+            }
+            case logic::Formula::Type::Existential:
+            {
+                auto castedFormula = std::static_pointer_cast<const logic::ExistentialFormula>(f);
+                return existential(castedFormula->vars, castedFormula->f, label);
+            }
+            case logic::Formula::Type::Universal:
+            {
+                auto castedFormula = std::static_pointer_cast<const logic::UniversalFormula>(f);
+                return universal(castedFormula->vars, castedFormula->f, label);
+            }
+            case logic::Formula::Type::Implication:
+            {
+                auto castedFormula = std::static_pointer_cast<const logic::ImplicationFormula>(f);
+                return implication(castedFormula->f1, castedFormula->f2, label);
+            }
+            case logic::Formula::Type::Equivalence:
+            {
+                auto castedFormula = std::static_pointer_cast<const logic::EquivalenceFormula>(f);
+                return equivalence(castedFormula->f1, castedFormula->f2, label);
+            }
+            case logic::Formula::Type::True:
+            {
+                return trueFormula(label);
+            }
+            case logic::Formula::Type::False:
+            {
+                return falseFormula(label);
+            }
+            default:
+            {
+                assert(false);
+                break;
+            }
         }
     }
 }

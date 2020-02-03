@@ -54,6 +54,7 @@ namespace logic {
         std::string declareSymbolColorSMTLIB() const;
         
         bool operator==(const Symbol &s) const {return name == s.name;}
+        bool operator!=(const Symbol &s) const {return !(name == s.name);}
     };
     
     // hack needed for bison: std::vector has no overload for ostream, but these overloads are needed for bison
@@ -78,16 +79,6 @@ namespace std
 # pragma mark - Signature
 
 namespace logic {
-
-    struct SymbolPtrEquality
-    {
-        bool operator()(const std::unique_ptr<Symbol>& a, const std::unique_ptr<Symbol>& b) const {return *a == *b;}
-    };
-    
-    struct SymbolPtrHash
-    {
-        size_t operator()(const std::unique_ptr<Symbol>& ptr) const {return std::hash<Symbol>()(*ptr);}
-    };
     
     // We use Signature as a manager-class for Symbol-instances
     class Signature

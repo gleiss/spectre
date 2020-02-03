@@ -21,7 +21,7 @@ namespace analysis {
         auto lStartZero = timepointForLoopStatement(statement, logic::Theory::natZero());
         auto lStartN = timepointForLoopStatement(statement, n);
         
-        auto posSymbol = logic::Signature::varSymbol("pos", logic::Sorts::intSort());
+        auto posSymbol = posVarSymbol();
         auto pos = logic::Terms::var(posSymbol);
         auto xSymbol = logic::Signature::varSymbol("xInt", logic::Sorts::intSort());
         auto x = logic::Terms::var(xSymbol);
@@ -58,8 +58,7 @@ namespace analysis {
                     }
                     if (twoTraces)
                     {
-                        auto trSymbol = logic::Signature::varSymbol("tr", logic::Sorts::traceSort());
-                        freeVarSymbols1.push_back(trSymbol);
+                        freeVarSymbols1.push_back(traceVarSymbol());
                     }
                     auto freeVarSymbols2 = freeVarSymbols1;
                     freeVarSymbols2.push_back(xSymbol);
@@ -200,8 +199,7 @@ namespace analysis {
                     auto freeVarSymbols = enclosingIteratorsSymbols(statement);
                     if (twoTraces)
                     {
-                        auto trSymbol = logic::Signature::varSymbol("tr", logic::Sorts::traceSort());
-                        freeVarSymbols.push_back(trSymbol);
+                        freeVarSymbols.push_back(traceVarSymbol());
                     }
 
                     auto freeVarSymbolsInd = freeVarSymbols;

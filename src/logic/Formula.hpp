@@ -18,8 +18,22 @@ namespace logic {
         Formula(std::string label) : label(label) {}
         virtual ~Formula() {}
         const std::string label;
-        
-        std::string declareSMTLIB(std::string decl, bool conjecture = false) const;
+
+        enum class Type
+        {
+            Predicate,
+            Equality,
+            Conjunction,
+            Disjunction,
+            Negation,
+            Existential,
+            Universal,
+            Implication,
+            Equivalence,
+            True,
+            False
+        };
+        virtual Type type() const = 0;
         
         virtual std::string toSMTLIB(unsigned indentation = 0) const = 0;
         virtual std::string prettyString(unsigned indentation = 0) const = 0;
@@ -48,6 +62,7 @@ namespace logic {
         std::shared_ptr<const Symbol> symbol;
         const std::vector<std::shared_ptr<const Term>> subterms;
 
+        Type type() const override { return Formula::Type::Predicate; }
         std::string toSMTLIB(unsigned indentation = 0) const override;
         std::string prettyString(unsigned indentation = 0) const override;
     };
@@ -65,6 +80,7 @@ namespace logic {
         const std::shared_ptr<const Term> left;
         const std::shared_ptr<const Term> right;
         
+        Type type() const override { return Formula::Type::Equality; }
         std::string toSMTLIB(unsigned indentation = 0) const override;
         std::string prettyString(unsigned indentation = 0) const override;
     };
@@ -78,6 +94,7 @@ namespace logic {
         
         const std::vector<std::shared_ptr<const Formula>> conj;
 
+        Type type() const override { return Formula::Type::Conjunction; }
         std::string toSMTLIB(unsigned indentation = 0) const override;
         std::string prettyString(unsigned indentation = 0) const override;
     };
@@ -91,6 +108,7 @@ namespace logic {
         
         const std::vector<std::shared_ptr<const Formula>> disj;
 
+        Type type() const override { return Formula::Type::Disjunction; }
         std::string toSMTLIB(unsigned indentation = 0) const override;
         std::string prettyString(unsigned indentation = 0) const override;
     };
@@ -104,6 +122,7 @@ namespace logic {
         
         const std::shared_ptr<const Formula> f;
 
+        Type type() const override { return Formula::Type::Negation; }
         std::string toSMTLIB(unsigned indentation = 0) const override;
         std::string prettyString(unsigned indentation = 0) const override;
         
@@ -126,6 +145,7 @@ namespace logic {
         const std::vector<std::shared_ptr<const Symbol>> vars;
         const std::shared_ptr<const Formula> f;
         
+        Type type() const override { return Formula::Type::Existential; }
         std::string toSMTLIB(unsigned indentation = 0) const override;
         std::string prettyString(unsigned indentation = 0) const override;
     };
@@ -147,6 +167,7 @@ namespace logic {
         const std::vector<std::shared_ptr<const Symbol>> vars;
         const std::shared_ptr<const Formula> f;
         
+        Type type() const override { return Formula::Type::Universal; }
         std::string toSMTLIB(unsigned indentation = 0) const override;
         std::string prettyString(unsigned indentation = 0) const override;
     };
@@ -162,6 +183,7 @@ namespace logic {
         const std::shared_ptr<const Formula> f1;
         const std::shared_ptr<const Formula> f2;
         
+        Type type() const override { return Formula::Type::Implication; }
         std::string toSMTLIB(unsigned indentation = 0) const override;
         std::string prettyString(unsigned indentation = 0) const override;
     };
@@ -177,10 +199,34 @@ namespace logic {
         const std::shared_ptr<const Formula> f1;
         const std::shared_ptr<const Formula> f2;
 
+        Type type() const override { return Formula::Type::Equivalence; }
+        std::string toSMTLIB(unsigned indentation = 0) const override;
+        std::string prettyString(unsigned indentation = 0) const override;
+    };
+
+    class TrueFormula : public Formula
+    {
+        friend class Formulas;
+        
+    public:
+        TrueFormula(std::string label = "") : Formula(label) {}
+        
+        Type type() const override { return Formula::Type::True; }
         std::string toSMTLIB(unsigned indentation = 0) const override;
         std::string prettyString(unsigned indentation = 0) const override;
     };
     
+    class FalseFormula : public Formula
+    {
+        friend class Formulas;
+        
+    public:
+        FalseFormula(std::string label = "") : Formula(label) {}
+        
+        Type type() const override { return Formula::Type::False; }
+        std::string toSMTLIB(unsigned indentation = 0) const override;
+        std::string prettyString(unsigned indentation = 0) const override;
+    };
     inline std::ostream& operator<<(std::ostream& ostr, const Formula& e) { ostr << e.toSMTLIB(); return ostr; }
     
 # pragma mark - Formulas
@@ -204,6 +250,28 @@ namespace logic {
         
         static std::shared_ptr<const Formula> existential(std::vector<std::shared_ptr<const Symbol>> vars, std::shared_ptr<const Formula> f, std::string label = "");
         static std::shared_ptr<const Formula> universal(std::vector<std::shared_ptr<const Symbol>> vars, std::shared_ptr<const Formula> f, std::string label = "");
+
+        static std::shared_ptr<const Formula> trueFormula(std::string label = "");
+        static std::shared_ptr<const Formula> falseFormula(std::string label = "");
+
+        // variants of the above methods which additionally attempt to apply simplifications before generating the formulas
+        // the label 'label' will be set on the result of the simplifications
+        static std::shared_ptr<const Formula> equalitySimp(std::shared_ptr<const Term> left, std::shared_ptr<const Term> right, std::string label = "");
+        static std::shared_ptr<const Formula> disequalitySimp(std::shared_ptr<const Term> left, std::shared_ptr<const Term> right, std::string label = "");
+
+        static std::shared_ptr<const Formula> negationSimp(std::shared_ptr<const Formula> f, std::string label = "");
+
+        static std::shared_ptr<const Formula> conjunctionSimp(std::vector<std::shared_ptr<const Formula>> conj, std::string label = "");
+        static std::shared_ptr<const Formula> disjunctionSimp(std::vector<std::shared_ptr<const Formula>> disj, std::string label = "");
+        
+        static std::shared_ptr<const Formula> implicationSimp(std::shared_ptr<const Formula> f1, std::shared_ptr<const Formula> f2, std::string label = "");
+        static std::shared_ptr<const Formula> equivalenceSimp(std::shared_ptr<const Formula> f1, std::shared_ptr<const Formula> f2, std::string label = "");
+        
+        static std::shared_ptr<const Formula> existentialSimp(std::vector<std::shared_ptr<const Symbol>> vars, std::shared_ptr<const Formula> f, std::string label = "");
+        static std::shared_ptr<const Formula> universalSimp(std::vector<std::shared_ptr<const Symbol>> vars, std::shared_ptr<const Formula> f, std::string label = "");
+
+    private:
+        static std::shared_ptr<const Formula> copyWithLabel(std::shared_ptr<const Formula> f, std::string label);
     };
 }
 

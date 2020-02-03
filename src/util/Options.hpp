@@ -75,24 +75,32 @@ namespace util {
         Configuration() :
         _outputDir("-dir", ""),
         _generateBenchmark("generateBenchmark", false),
+        _nativeNat("-nat", false),
+        _inlineSemantics("-inlineSemantics", true),
         _allOptions()
         {
             registerOption(&_outputDir);
             registerOption(&_generateBenchmark);
+            registerOption(&_nativeNat);
+            registerOption(&_inlineSemantics);
         }
         
         bool setAllValues(int argc, char *argv[]);
         
         Option* getOption(std::string name);
         
-        StringOption outputDir() { return _outputDir; }
-        BooleanOption generateBenchmark() { return _generateBenchmark; }
+        std::string outputDir() { return _outputDir.getValue(); }
+        bool generateBenchmark() { return _generateBenchmark.getValue(); }
+        bool nativeNat() { return _nativeNat.getValue(); }
+        bool inlineSemantics() { return _inlineSemantics.getValue(); }
 
         static Configuration instance() { return _instance; }
         
     protected:
         StringOption _outputDir;
         BooleanOption _generateBenchmark;
+        BooleanOption _nativeNat;
+        BooleanOption _inlineSemantics;
 
         std::map<std::string, Option*> _allOptions;
         
